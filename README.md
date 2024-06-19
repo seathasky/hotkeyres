@@ -1,4 +1,4 @@
-![image](https://raw.githubusercontent.com/seathasky/hotkeyres/main/MainNotif.png)<br>
+![image](https://raw.githubusercontent.com/seathasky/hotkeyres/main/resources/MainNotif.png)<br>
 [Download latest release](https://github.com/seathasky/hotkeyres/releases)<br><Br>
 
 <b>Setup:</b><br>
