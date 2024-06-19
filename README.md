@@ -1,3 +1,8 @@
+# HotKeyRes
+
+[Download latest release](https://github.com/seathasky/hotkeyres/releases)
+
+
 build w/ python
 
 ```pip install pyautogui keyboard pywin32 pystray```
