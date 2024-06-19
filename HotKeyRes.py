@@ -7,7 +7,7 @@ import os
 import time
 import threading
 from pystray import Icon, MenuItem, Menu
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
 # Constants
 CONFIG_FILE = 'config.json'
@@ -76,7 +76,6 @@ def show_notification(message):
     global notification_thread
 
     try:
-        # Create a new notification window with a unique class name
         notification_thread = threading.Thread(target=_show_notification_window, args=(message,))
         notification_thread.start()
 
@@ -85,20 +84,16 @@ def show_notification(message):
 
 def _show_notification_window(message):
     try:
-        # Generate a unique class name based on current timestamp
         class_name = f"NotificationWindowClass_{int(time.time()*1000)}"
 
-        # Calculate screen dimensions
         screen_width = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
         screen_height = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
 
-        # Define notification window size and position
         notification_width = 300
         notification_height = 100
-        notification_x = screen_width - notification_width - 20  # Adjust as needed
-        notification_y = 20  # Top-right corner, 20 pixels from the top
+        notification_x = screen_width - notification_width - 20
+        notification_y = 20
 
-        # Create a top-level window class
         wc = win32gui.WNDCLASS()
         wc.lpfnWndProc = _WndProc
         wc.lpszClassName = class_name
@@ -107,52 +102,43 @@ def _show_notification_window(message):
         wc.hbrBackground = win32gui.GetStockObject(win32con.WHITE_BRUSH)
         wc.style = win32con.CS_HREDRAW | win32con.CS_VREDRAW
 
-        # Register the window class
         win32gui.RegisterClass(wc)
 
-        # Create the window
         global notification_window_handle
         notification_window_handle = win32gui.CreateWindowEx(
-            0,                               # Extended window style
-            wc.lpszClassName,                # Window class name
-            "Notification",                  # Window title
-            win32con.WS_POPUP,               # Window style - no minimize or close buttons
-            notification_x,                  # X position
-            notification_y,                  # Y position
-            notification_width,              # Width
-            notification_height,             # Height
-            0,                               # Parent window handle
-            0,                               # Menu handle
-            wc.hInstance,                    # Application instance handle
-            None                             # Window creation data
+            0,
+            wc.lpszClassName,
+            "Notification",
+            win32con.WS_POPUP,
+            notification_x,
+            notification_y,
+            notification_width,
+            notification_height,
+            0,
+            0,
+            wc.hInstance,
+            None
         )
 
-        # Show the window
         win32gui.ShowWindow(notification_window_handle, win32con.SW_SHOWNORMAL)
         win32gui.UpdateWindow(notification_window_handle)
 
-        # Display the message with transparent background
         hdc = win32gui.GetDC(notification_window_handle)
-        win32gui.SetBkMode(hdc, win32con.TRANSPARENT)  # Set transparent text background
+        win32gui.SetBkMode(hdc, win32con.TRANSPARENT)
 
-        # Draw centered text
         rect = (0, 0, notification_width, notification_height)
         win32gui.DrawText(hdc, message, -1, rect, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
-        # Release the device context
         win32gui.ReleaseDC(notification_window_handle, hdc)
 
-        # Wait for a second
         time.sleep(1)
 
-        # Destroy the window
         win32gui.DestroyWindow(notification_window_handle)
         win32gui.UnregisterClass(wc.lpszClassName, wc.hInstance)
 
     except Exception as e:
         print(f"An error occurred in _show_notification_window: {e}")
 
-# Window procedure for the custom notification window
 def _WndProc(hwnd, msg, wParam, lParam):
     if msg == win32con.WM_CLOSE:
         win32gui.DestroyWindow(hwnd)
@@ -163,29 +149,32 @@ def _WndProc(hwnd, msg, wParam, lParam):
     else:
         return win32gui.DefWindowProc(hwnd, msg, wParam, lParam)
 
-# Function to handle hotkey press
 def on_hotkey(event):
     if event.event_type == keyboard.KEY_DOWN:
         if event.name == resolution_switch_keybind.split('+')[-1] and all(keyboard.is_pressed(modifier) for modifier in resolution_switch_keybind.split('+')[:-1]):
             toggle_resolution()
 
-# Register hotkey
 keyboard.on_press_key(resolution_switch_keybind.split('+')[-1], on_hotkey)
 
-# Function to create the system tray icon
 def create_icon_with_h():
-    img = Image.new('RGB', (16, 16), color="white")
-    d = ImageDraw.Draw(img)
-    d.rectangle([(1, 1), (15, 15)], outline="black")  # Black border
-    font = ImageFont.truetype("arial.ttf", 10)  # Load a font of your choice
-    d.text((4, 3), "H", font=font, fill="black")  # Draw "H" in the middle
-    return img
+    return Image.open("icon.ico")
 
-# Create a menu for the system tray icon
-menu = Menu(MenuItem("Exit", lambda: os._exit(0)))
+# Function to handle click event
+def on_icon_click(icon, item):
+    toggle_resolution()
+
+# Menu for system tray icon
+menu = Menu(
+    MenuItem("Toggle Resolution", on_icon_click),
+    MenuItem("Exit", lambda: os._exit(0))
+)
 
 # Create an icon
 icon = Icon("HotKeyRes", create_icon_with_h(), menu=menu, title="HotKeyRes")
 
+# Set up the icon click event by overriding the run method
+def setup(icon):
+    icon.visible = True
+
 # Run the icon
-icon.run()
+icon.run(setup)
