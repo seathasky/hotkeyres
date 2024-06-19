@@ -6,7 +6,7 @@ Change resolutions/refresh and keybind in config.json<br><br>
 notifications on res switch:<br><br>
 ![image](https://raw.githubusercontent.com/seathasky/hotkeyres/main/notifcations.png)
 
-system tray image:<br><br>
+system tray icon:<br><br>
 ![image](https://raw.githubusercontent.com/seathasky/hotkeyres/main/systemtray1.png)
 <br>
 
