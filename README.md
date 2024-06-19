@@ -10,6 +10,6 @@ build w/ python
 system tray image:<br><br>
 ![image](https://github.com/seathasky/hotkeyres/blob/main/systemtray.png)
 <br><br>
-config,json</b><br>
+config.json<br>
 
 use config.json to change keybind, change/add resolutions and refresh rates.
