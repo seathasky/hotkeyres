@@ -7,7 +7,7 @@ notifications on res switch:<br><br>
 ![image](https://raw.githubusercontent.com/seathasky/hotkeyres/main/notifcations.png)
 
 system tray image:<br><br>
-![image](https://github.com/seathasky/hotkeyres/blob/main/systemtray.png)
+![image](https://raw.githubusercontent.com/seathasky/hotkeyres/main/systemtray1.png)
 <br>
 
 # build w/ python
