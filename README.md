@@ -10,3 +10,7 @@ system tray image:<br><br>
 config.json<br>
 
 use config.json to change keybind, change/add resolutions and refresh rates.
+
+notifications on res switch<br><br>
+![image](https://raw.githubusercontent.com/seathasky/hotkeyres/main/notifcations.png)
+
