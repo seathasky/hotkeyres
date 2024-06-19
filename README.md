@@ -23,7 +23,7 @@ system tray icon:<br><br>
 # planned features/bug fix:
 <ul>
   <li>fix duplicate .exe on multiple click</li>
-  <li>notification at .exe launch</li>
+  <li><del>notification at .exe launch</del></li>
 <li><del>add start at login feature</del></li>
  <li><del>better sys tray icon</del></li>
  <li><del>sys tray tooltip</del></li>
