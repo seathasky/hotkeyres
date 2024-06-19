@@ -126,9 +126,20 @@ def set_resolution(width, height, refresh_rate):
         print(f"An error occurred while setting resolution: {e}")
         show_resolution_notification(f"Error: {e}")
 
+# Function to reload the configuration file
+def reload_config():
+    global config, resolution_switch_keybind, default_resolutions, start_at_login, notification_duration, notification_position
+    config = load_config()
+    resolution_switch_keybind = config["resolution_switch_keybind"]
+    default_resolutions = config["default_resolutions"]
+    start_at_login = config["start_at_login"]
+    notification_duration = config["notification_duration"]
+    notification_position = config["notification_position"]
+
 # Function to toggle resolution
 def toggle_resolution():
     global current_resolution_index
+    reload_config()
     resolutions = config["default_resolutions"]
     current_resolution_index = (current_resolution_index + 1) % len(resolutions)
     res = resolutions[current_resolution_index]
