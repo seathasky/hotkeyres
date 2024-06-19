@@ -12,7 +12,10 @@ from pystray import Icon, MenuItem, Menu
 from PIL import Image, ImageDraw, ImageWin
 
 # Constants
-CONFIG_FILE = 'config.json'
+BASE_DIR = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, 'frozen', False) else __file__))
+CONFIG_FILE = os.path.join(BASE_DIR, 'config.json')
+ICON_FILE = os.path.join(BASE_DIR, "resources", "icon.ico")
+IMAGE_FILE = os.path.join(BASE_DIR, "resources", "MainNotif.png")
 current_resolution_index = 0
 notification_thread = None
 notification_window_handle = None
@@ -23,6 +26,7 @@ EXECUTABLE_NAME = 'HotKeyRes.exe'
 
 # Function to create a default config file
 def create_default_config():
+    print("Creating default config file.")
     default_config = {
         "resolution_switch_keybind": "ctrl+f4",
         "default_resolutions": [
@@ -33,15 +37,26 @@ def create_default_config():
         "notification_duration": 2,
         "notification_position": "top"
     }
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(default_config, f, indent=4)
+    try:
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(default_config, f, indent=4)
+        print("Default config file created.")
+    except Exception as e:
+        print(f"Error creating default config file: {e}")
 
 # Function to load the config file
 def load_config():
     if not os.path.exists(CONFIG_FILE):
         create_default_config()
-    with open(CONFIG_FILE, 'r') as f:
-        config = json.load(f)
+    try:
+        with open(CONFIG_FILE, 'r') as f:
+            config = json.load(f)
+        print("Config file loaded.")
+    except Exception as e:
+        print(f"Error loading config file: {e}")
+        create_default_config()
+        with open(CONFIG_FILE, 'r') as f:
+            config = json.load(f)
 
     # Ensure all necessary keys are present
     if "resolution_switch_keybind" not in config:
@@ -62,16 +77,33 @@ def load_config():
 
 # Function to save the config file
 def save_config(config):
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(config, f, indent=4)
+    try:
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(config, f, indent=4)
+        print("Config file saved.")
+    except Exception as e:
+        print(f"Error saving config file: {e}")
 
 # Load the config file
-config = load_config()
-resolution_switch_keybind = config["resolution_switch_keybind"]
-default_resolutions = config["default_resolutions"]
-start_at_login = config["start_at_login"]
-notification_duration = config["notification_duration"]
-notification_position = config["notification_position"]
+try:
+    config = load_config()
+    resolution_switch_keybind = config["resolution_switch_keybind"]
+    default_resolutions = config["default_resolutions"]
+    start_at_login = config["start_at_login"]
+    notification_duration = config["notification_duration"]
+    notification_position = config["notification_position"]
+except Exception as e:
+    print(f"Failed to load configuration: {e}")
+    config = {
+        "resolution_switch_keybind": "ctrl+f4",
+        "default_resolutions": [
+            {"name": "Resolution 1", "width": 1920, "height": 1080, "refresh_rate": 60},
+            {"name": "Resolution 2", "width": 1280, "height": 720, "refresh_rate": 60}
+        ],
+        "start_at_login": False,
+        "notification_duration": 2,
+        "notification_position": "top"
+    }
 
 # Function to set resolution
 def set_resolution(width, height, refresh_rate):
@@ -156,8 +188,11 @@ def _show_startup_notification_window():
         win32gui.UpdateWindow(notification_window_handle)
 
         # Load the image
-        image_path = "resources/MainNotif.png"  # replace with the path to your image
-        image = Image.open(image_path)
+        if not os.path.exists(IMAGE_FILE):
+            print(f"Image not found: {IMAGE_FILE}")
+            return
+
+        image = Image.open(IMAGE_FILE)
         image = image.resize((notification_width, notification_height), Image.LANCZOS)  # resize image as needed
 
         # Convert PIL image to a format suitable for Windows
@@ -267,13 +302,11 @@ def on_hotkey(event):
 keyboard.on_press_key(resolution_switch_keybind.split('+')[-1], on_hotkey)
 
 def create_icon_with_h():
-    # Get the directory of the current script or executable
-    if getattr(sys, 'frozen', False):
-        dir_path = os.path.dirname(sys.executable)
-    else:
-        dir_path = os.path.dirname(os.path.abspath(__file__))
     # Load the icon from the correct directory
-    return Image.open(os.path.join(dir_path, "resources/icon.ico"))
+    if not os.path.exists(ICON_FILE):
+        print(f"Icon not found: {ICON_FILE}")
+        return None
+    return Image.open(ICON_FILE)
 
 # Function to handle click event
 def on_icon_click(icon, item):
@@ -291,6 +324,7 @@ def add_to_startup():
     winreg.CloseKey(key)
     config["start_at_login"] = True
     save_config(config)
+    print("Added to startup.")
 
 # Function to remove application from startup
 def remove_from_startup():
@@ -302,6 +336,7 @@ def remove_from_startup():
         pass
     config["start_at_login"] = False
     save_config(config)
+    print("Removed from startup.")
 
 # Function to handle the toggle start at login menu item
 def toggle_start_at_login(icon, item):
@@ -335,7 +370,11 @@ menu = Menu(
 )
 
 # Create an icon
-icon = Icon("HotKeyRes", create_icon_with_h(), menu=menu, title="HotKeyRes options")
+icon_image = create_icon_with_h()
+if not icon_image:
+    print("Error: Icon not found. Exiting.")
+    sys.exit(1)
+icon = Icon("HotKeyRes", icon_image, menu=menu, title="HotKeyRes options")
 
 # Set up the icon click event by overriding the run method
 def setup(icon):
