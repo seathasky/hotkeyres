@@ -20,7 +20,7 @@ system tray image:<br><br>
 <ul>
   <li>duplicate .exe on multiple click</li>
   <li>better sys tray icon</li>
-  <li>sys tray tooltop</li>
+  <li>sys tray tooltip</li>
 </ul> 
 
 
