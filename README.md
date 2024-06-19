@@ -20,7 +20,7 @@ system tray image:<br><br>
 <ul>
   <li>fix duplicate .exe on multiple click</li>
   <li>notification at .exe launch</li>
-<li>add start at login feature</li>
+<li><del>add start at login feature</del></li>
  <li><del>better sys tray icon</del></li>
  <li><del>sys tray tooltip</del></li>
  </ul> 
