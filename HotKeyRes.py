@@ -9,7 +9,7 @@ import sys
 import time
 import threading
 from pystray import Icon, MenuItem, Menu
-from PIL import Image
+from PIL import Image, ImageDraw, ImageWin
 
 # Constants
 CONFIG_FILE = 'config.json'
@@ -85,14 +85,14 @@ def set_resolution(width, height, refresh_rate):
         result = win32api.ChangeDisplaySettings(devmode, 0)
         if result != win32con.DISP_CHANGE_SUCCESSFUL:
             print(f"Failed to change resolution. Error code: {result}")
-            show_notification(f"Failed to change resolution. Error code: {result}")
+            show_resolution_notification(f"Failed to change resolution. Error code: {result}")
         else:
             print(f"Resolution set to {height}p at {refresh_rate}Hz")
-            show_notification(f"Resolution changed to {height}p at {refresh_rate}Hz")
+            show_resolution_notification(f"Resolution changed to {height}p at {refresh_rate}Hz")
 
     except Exception as e:
         print(f"An error occurred while setting resolution: {e}")
-        show_notification(f"Error: {e}")
+        show_resolution_notification(f"Error: {e}")
 
 # Function to toggle resolution
 def toggle_resolution():
@@ -102,38 +102,102 @@ def toggle_resolution():
     res = resolutions[current_resolution_index]
     set_resolution(res["width"], res["height"], res["refresh_rate"])
 
-# Function to create and show a notification window
-def show_notification(message, position=None):
+# Function to create and show a startup notification window with an image
+def show_startup_notification():
     global notification_thread
 
     try:
-        if position is None:
-            position = notification_position
-        notification_thread = threading.Thread(target=_show_notification_window, args=(message, position))
+        notification_thread = threading.Thread(target=_show_startup_notification_window)
         notification_thread.start()
 
     except Exception as e:
-        print(f"An error occurred while showing notification: {e}")
+        print(f"An error occurred while showing startup notification: {e}")
 
-def _show_notification_window(message, position):
+def _show_startup_notification_window():
     try:
         class_name = f"NotificationWindowClass_{int(time.time()*2000)}"
 
         screen_width = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
         screen_height = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
 
-        notification_width = 400  # increased width to fit the startup message
+        notification_width = 400  # width of the image
+        notification_height = 150  # height of the image
+
+        notification_x = (screen_width - notification_width) // 2
+        notification_y = (screen_height - notification_height) // 2
+
+        wc = win32gui.WNDCLASS()
+        wc.lpfnWndProc = _WndProc
+        wc.lpszClassName = class_name
+        wc.hInstance = win32api.GetModuleHandle(None)
+        wc.hCursor = win32gui.LoadCursor(0, win32con.IDC_ARROW)
+        wc.hbrBackground = win32gui.GetStockObject(win32con.WHITE_BRUSH)
+        wc.style = win32con.CS_HREDRAW | win32con.CS_VREDRAW
+
+        win32gui.RegisterClass(wc)
+
+        global notification_window_handle
+        notification_window_handle = win32gui.CreateWindowEx(
+            win32con.WS_EX_TOPMOST,
+            wc.lpszClassName,
+            "Notification",
+            win32con.WS_POPUP,
+            notification_x,
+            notification_y,
+            notification_width,
+            notification_height,
+            0,
+            0,
+            wc.hInstance,
+            None
+        )
+
+        win32gui.ShowWindow(notification_window_handle, win32con.SW_SHOWNORMAL)
+        win32gui.UpdateWindow(notification_window_handle)
+
+        # Load the image
+        image_path = "resources/MainNotif.png"  # replace with the path to your image
+        image = Image.open(image_path)
+        image = image.resize((notification_width, notification_height), Image.LANCZOS)  # resize image as needed
+
+        # Convert PIL image to a format suitable for Windows
+        hdc = win32gui.GetDC(notification_window_handle)
+        hbmp = ImageWin.Dib(image)
+        hbmp.draw(hdc, (0, 0, notification_width, notification_height))  # draw image at full window size
+
+        win32gui.ReleaseDC(notification_window_handle, hdc)
+
+        time.sleep(notification_duration)
+
+        win32gui.DestroyWindow(notification_window_handle)
+        win32gui.UnregisterClass(wc.lpszClassName, wc.hInstance)
+
+    except Exception as e:
+        print(f"An error occurred in _show_startup_notification_window: {e}")
+
+# Function to create and show a resolution change notification window with text
+def show_resolution_notification(message):
+    global notification_thread
+
+    try:
+        notification_thread = threading.Thread(target=_show_resolution_notification_window, args=(message,))
+        notification_thread.start()
+
+    except Exception as e:
+        print(f"An error occurred while showing resolution notification: {e}")
+
+def _show_resolution_notification_window(message):
+    try:
+        class_name = f"NotificationWindowClass_{int(time.time()*2000)}"
+
+        screen_width = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
+        screen_height = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
+
+        notification_width = 400
         notification_height = 100
 
-        if position == "top":
-            notification_x = (screen_width - notification_width) // 2
-            notification_y = 20
-        elif position == "center":
-            notification_x = (screen_width - notification_width) // 2
-            notification_y = (screen_height - notification_height) // 2
-        else:  # default to top
-            notification_x = (screen_width - notification_width) // 2
-            notification_y = 20
+        notification_x = (screen_width - notification_width) // 2
+        notification_y = 20
 
         wc = win32gui.WNDCLASS()
         wc.lpfnWndProc = _WndProc
@@ -168,7 +232,7 @@ def _show_notification_window(message, position):
         win32gui.SetBkMode(hdc, win32con.TRANSPARENT)
 
         rect = (0, 0, notification_width, notification_height)
-        
+
         # Draw black border
         win32gui.FrameRect(hdc, rect, win32gui.CreateSolidBrush(win32api.RGB(0, 0, 0)))
 
@@ -183,7 +247,7 @@ def _show_notification_window(message, position):
         win32gui.UnregisterClass(wc.lpszClassName, wc.hInstance)
 
     except Exception as e:
-        print(f"An error occurred in _show_notification_window: {e}")
+        print(f"An error occurred in _show_resolution_notification_window: {e}")
 
 def _WndProc(hwnd, msg, wParam, lParam):
     if msg == win32con.WM_CLOSE:
@@ -209,7 +273,7 @@ def create_icon_with_h():
     else:
         dir_path = os.path.dirname(os.path.abspath(__file__))
     # Load the icon from the correct directory
-    return Image.open(os.path.join(dir_path, "icon.ico"))
+    return Image.open(os.path.join(dir_path, "resources/icon.ico"))
 
 # Function to handle click event
 def on_icon_click(icon, item):
@@ -278,7 +342,7 @@ def setup(icon):
     icon.visible = True
     if start_at_login:
         add_to_startup()
-    show_notification("HotKeyRes started. Use system tray icon for options", position="center")
+    show_startup_notification()
 
 # Run the icon
 icon.run(setup)
