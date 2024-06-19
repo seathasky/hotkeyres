@@ -17,7 +17,11 @@ system tray image:<br><br>
 ```pyinstaller --onefile --noconsole --icon="C:\Users\USERNAMEHERE\Downloads\hotkeyres-main\icon.ico" "C:\Users\USERNAMEHERE\Downloads\hotkeyres-main\HotKeyRes.py" ```
 
 # planned features/bug fix:
--duplicate .exe on multiple click<br>
--better sys tray icon
--sys tray tooltop
+<ul>
+  <li>duplicate .exe on multiple click</li>
+  <li>better sys tray icon</li>
+  <li>sys tray tooltop</li>
+</ul> 
+
+
 
