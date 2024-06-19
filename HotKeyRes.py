@@ -2,8 +2,10 @@ import keyboard
 import win32api
 import win32con
 import win32gui
+import winreg
 import json
 import os
+import sys
 import time
 import threading
 from pystray import Icon, MenuItem, Menu
@@ -19,12 +21,16 @@ current_resolution = None
 notification_thread = None
 notification_window_handle = None
 notification_lock = threading.Lock()
+APP_NAME = "HotKeyRes"
+STARTUP_KEY = r'Software\Microsoft\Windows\CurrentVersion\Run'
+EXECUTABLE_NAME = 'HotKeyRes.exe'
 
 # Function to create a default config file
 def create_default_config():
     default_config = {
         "resolution_switch_keybind": "ctrl+f4",
-        "default_resolutions": DEFAULT_RESOLUTIONS
+        "default_resolutions": DEFAULT_RESOLUTIONS,
+        "start_at_login": False
     }
     with open(CONFIG_FILE, 'w') as f:
         json.dump(default_config, f, indent=4)
@@ -35,12 +41,27 @@ def load_config():
         create_default_config()
     with open(CONFIG_FILE, 'r') as f:
         config = json.load(f)
+
+    # Ensure all necessary keys are present
+    if "resolution_switch_keybind" not in config:
+        config["resolution_switch_keybind"] = "ctrl+f4"
+    if "default_resolutions" not in config:
+        config["default_resolutions"] = DEFAULT_RESOLUTIONS
+    if "start_at_login" not in config:
+        config["start_at_login"] = False
+    
     return config
+
+# Function to save the config file
+def save_config(config):
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=4)
 
 # Load the config file
 config = load_config()
 resolution_switch_keybind = config["resolution_switch_keybind"]
 default_resolutions = config["default_resolutions"]
+start_at_login = config["start_at_login"]
 
 # Function to set resolution
 def set_resolution(width, height, refresh_rate):
@@ -157,24 +178,81 @@ def on_hotkey(event):
 keyboard.on_press_key(resolution_switch_keybind.split('+')[-1], on_hotkey)
 
 def create_icon_with_h():
-    return Image.open("icon.ico")
+    # Get the directory of the current script or executable
+    if getattr(sys, 'frozen', False):
+        dir_path = os.path.dirname(sys.executable)
+    else:
+        dir_path = os.path.dirname(os.path.abspath(__file__))
+    # Load the icon from the correct directory
+    return Image.open(os.path.join(dir_path, "icon.ico"))
 
 # Function to handle click event
 def on_icon_click(icon, item):
     toggle_resolution()
 
+# Function to add application to startup
+def add_to_startup():
+    if getattr(sys, 'frozen', False):
+        exe_path = os.path.join(os.path.dirname(sys.executable), EXECUTABLE_NAME)
+    else:
+        exe_path = os.path.abspath(__file__).replace('.py', '.exe')
+    
+    key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, STARTUP_KEY, 0, winreg.KEY_SET_VALUE)
+    winreg.SetValueEx(key, APP_NAME, 0, winreg.REG_SZ, exe_path)
+    winreg.CloseKey(key)
+    config["start_at_login"] = True
+    save_config(config)
+
+# Function to remove application from startup
+def remove_from_startup():
+    try:
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, STARTUP_KEY, 0, winreg.KEY_SET_VALUE)
+        winreg.DeleteValue(key, APP_NAME)
+        winreg.CloseKey(key)
+    except FileNotFoundError:
+        pass
+    config["start_at_login"] = False
+    save_config(config)
+
+# Function to handle the toggle start at login menu item
+def toggle_start_at_login(icon, item):
+    if config["start_at_login"]:
+        remove_from_startup()
+    else:
+        add_to_startup()
+    update_menu(icon)
+
+# Function to update the system tray menu dynamically
+def update_menu(icon):
+    icon.menu = Menu(
+        MenuItem("Toggle Resolution", on_icon_click),
+        MenuItem(
+            "Start at Windows Login",
+            toggle_start_at_login,
+            checked=lambda item: config["start_at_login"]
+        ),
+        MenuItem("Exit", lambda: os._exit(0))
+    )
+
 # Menu for system tray icon
 menu = Menu(
     MenuItem("Toggle Resolution", on_icon_click),
+    MenuItem(
+        "Start at Windows Login",
+        toggle_start_at_login,
+        checked=lambda item: config["start_at_login"]
+    ),
     MenuItem("Exit", lambda: os._exit(0))
 )
 
 # Create an icon
-icon = Icon("HotKeyRes", create_icon_with_h(), menu=menu, title="HotKeyRes")
+icon = Icon("HotKeyRes", create_icon_with_h(), menu=menu, title="HotKeyRes options")
 
 # Set up the icon click event by overriding the run method
 def setup(icon):
     icon.visible = True
+    if start_at_login:
+        add_to_startup()
 
 # Run the icon
 icon.run(setup)
