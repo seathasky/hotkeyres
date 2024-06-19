@@ -14,3 +14,7 @@ use config.json to change keybind, change/add resolutions and refresh rates.<br>
 notifications on res switch:<br><br>
 ![image](https://raw.githubusercontent.com/seathasky/hotkeyres/main/notifcations.png)
 
+<br><br>
+planned bug fixes:<br><br>
+duplicate .exe on multiple click.
+
