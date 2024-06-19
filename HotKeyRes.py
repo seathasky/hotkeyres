@@ -7,7 +7,7 @@ import os
 import time
 import threading
 from pystray import Icon, MenuItem, Menu
-from PIL import Image, ImageDraw, ImageFont  # Import ImageFont and ImageDraw from PIL
+from PIL import Image, ImageDraw, ImageFont
 
 # Constants
 CONFIG_FILE = 'config.json'
@@ -23,8 +23,8 @@ notification_lock = threading.Lock()
 # Function to create a default config file
 def create_default_config():
     default_config = {
-        "resolution_switch_keybind": "ctrl+f4",  # Default keybind
-        "default_resolutions": DEFAULT_RESOLUTIONS  # Default resolutions
+        "resolution_switch_keybind": "ctrl+f4",
+        "default_resolutions": DEFAULT_RESOLUTIONS
     }
     with open(CONFIG_FILE, 'w') as f:
         json.dump(default_config, f, indent=4)
@@ -181,26 +181,11 @@ def create_icon_with_h():
     d.text((4, 3), "H", font=font, fill="black")  # Draw "H" in the middle
     return img
 
-# Function to update the icon tooltip
-def update_icon_tooltip(icon_handle, tooltip_text):
-    try:
-        # Set the tooltip for the icon
-        icon_handle.tooltip = tooltip_text
-
-    except Exception as e:
-        print(f"An error occurred in update_icon_tooltip: {e}")
-
 # Create a menu for the system tray icon
 menu = Menu(MenuItem("Exit", lambda: os._exit(0)))
 
 # Create an icon
-icon = Icon("HotKeyRes", create_icon_with_h(), menu=menu)
-
-# Set the update function for the icon
-icon.update = lambda icon: None
-
-# Set the tooltip for the icon
-update_icon_tooltip(icon, "HotKeyRes - Click to toggle resolution")
+icon = Icon("HotKeyRes", create_icon_with_h(), menu=menu, title="HotKeyRes")
 
 # Run the icon
 icon.run()
