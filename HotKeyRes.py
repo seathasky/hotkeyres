@@ -13,11 +13,7 @@ from PIL import Image
 
 # Constants
 CONFIG_FILE = 'config.json'
-DEFAULT_RESOLUTIONS = [
-    {"name": "Resolution 1", "width": 2560, "height": 1600, "refresh_rate": 165},
-    {"name": "Resolution 2", "width": 1280, "height": 720, "refresh_rate": 60}
-]
-current_resolution = None
+current_resolution_index = 0
 notification_thread = None
 notification_window_handle = None
 notification_lock = threading.Lock()
@@ -29,8 +25,13 @@ EXECUTABLE_NAME = 'HotKeyRes.exe'
 def create_default_config():
     default_config = {
         "resolution_switch_keybind": "ctrl+f4",
-        "default_resolutions": DEFAULT_RESOLUTIONS,
-        "start_at_login": False
+        "default_resolutions": [
+            {"name": "Resolution 1", "width": 1920, "height": 1080, "refresh_rate": 60},
+            {"name": "Resolution 2", "width": 1280, "height": 720, "refresh_rate": 60}
+        ],
+        "start_at_login": False,
+        "notification_duration": 2,
+        "notification_position": "top"
     }
     with open(CONFIG_FILE, 'w') as f:
         json.dump(default_config, f, indent=4)
@@ -46,9 +47,16 @@ def load_config():
     if "resolution_switch_keybind" not in config:
         config["resolution_switch_keybind"] = "ctrl+f4"
     if "default_resolutions" not in config:
-        config["default_resolutions"] = DEFAULT_RESOLUTIONS
+        config["default_resolutions"] = [
+            {"name": "Resolution 1", "width": 1920, "height": 1080, "refresh_rate": 60},
+            {"name": "Resolution 2", "width": 1280, "height": 720, "refresh_rate": 60}
+        ]
     if "start_at_login" not in config:
         config["start_at_login"] = False
+    if "notification_duration" not in config:
+        config["notification_duration"] = 2
+    if "notification_position" not in config:
+        config["notification_position"] = "top"
     
     return config
 
@@ -62,6 +70,8 @@ config = load_config()
 resolution_switch_keybind = config["resolution_switch_keybind"]
 default_resolutions = config["default_resolutions"]
 start_at_login = config["start_at_login"]
+notification_duration = config["notification_duration"]
+notification_position = config["notification_position"]
 
 # Function to set resolution
 def set_resolution(width, height, refresh_rate):
@@ -75,45 +85,55 @@ def set_resolution(width, height, refresh_rate):
         result = win32api.ChangeDisplaySettings(devmode, 0)
         if result != win32con.DISP_CHANGE_SUCCESSFUL:
             print(f"Failed to change resolution. Error code: {result}")
+            show_notification(f"Failed to change resolution. Error code: {result}")
         else:
             print(f"Resolution set to {height}p at {refresh_rate}Hz")
             show_notification(f"Resolution changed to {height}p at {refresh_rate}Hz")
 
     except Exception as e:
         print(f"An error occurred while setting resolution: {e}")
+        show_notification(f"Error: {e}")
 
 # Function to toggle resolution
 def toggle_resolution():
-    global current_resolution
-    if current_resolution is None or current_resolution == default_resolutions[0]:
-        set_resolution(default_resolutions[1]["width"], default_resolutions[1]["height"], default_resolutions[1]["refresh_rate"])
-        current_resolution = default_resolutions[1]
-    else:
-        set_resolution(default_resolutions[0]["width"], default_resolutions[0]["height"], default_resolutions[0]["refresh_rate"])
-        current_resolution = default_resolutions[0]
+    global current_resolution_index
+    resolutions = config["default_resolutions"]
+    current_resolution_index = (current_resolution_index + 1) % len(resolutions)
+    res = resolutions[current_resolution_index]
+    set_resolution(res["width"], res["height"], res["refresh_rate"])
 
 # Function to create and show a notification window
-def show_notification(message):
+def show_notification(message, position=None):
     global notification_thread
 
     try:
-        notification_thread = threading.Thread(target=_show_notification_window, args=(message,))
+        if position is None:
+            position = notification_position
+        notification_thread = threading.Thread(target=_show_notification_window, args=(message, position))
         notification_thread.start()
 
     except Exception as e:
         print(f"An error occurred while showing notification: {e}")
 
-def _show_notification_window(message):
+def _show_notification_window(message, position):
     try:
-        class_name = f"NotificationWindowClass_{int(time.time()*1000)}"
+        class_name = f"NotificationWindowClass_{int(time.time()*2000)}"
 
         screen_width = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
         screen_height = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
 
-        notification_width = 300
+        notification_width = 400  # increased width to fit the startup message
         notification_height = 100
-        notification_x = screen_width - notification_width - 20
-        notification_y = 20
+
+        if position == "top":
+            notification_x = (screen_width - notification_width) // 2
+            notification_y = 20
+        elif position == "center":
+            notification_x = (screen_width - notification_width) // 2
+            notification_y = (screen_height - notification_height) // 2
+        else:  # default to top
+            notification_x = (screen_width - notification_width) // 2
+            notification_y = 20
 
         wc = win32gui.WNDCLASS()
         wc.lpfnWndProc = _WndProc
@@ -127,7 +147,7 @@ def _show_notification_window(message):
 
         global notification_window_handle
         notification_window_handle = win32gui.CreateWindowEx(
-            0,
+            win32con.WS_EX_TOPMOST,
             wc.lpszClassName,
             "Notification",
             win32con.WS_POPUP,
@@ -148,11 +168,16 @@ def _show_notification_window(message):
         win32gui.SetBkMode(hdc, win32con.TRANSPARENT)
 
         rect = (0, 0, notification_width, notification_height)
+        
+        # Draw black border
+        win32gui.FrameRect(hdc, rect, win32gui.CreateSolidBrush(win32api.RGB(0, 0, 0)))
+
+        # Draw text
         win32gui.DrawText(hdc, message, -1, rect, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
         win32gui.ReleaseDC(notification_window_handle, hdc)
 
-        time.sleep(1)
+        time.sleep(notification_duration)
 
         win32gui.DestroyWindow(notification_window_handle)
         win32gui.UnregisterClass(wc.lpszClassName, wc.hInstance)
@@ -253,6 +278,7 @@ def setup(icon):
     icon.visible = True
     if start_at_login:
         add_to_startup()
+    show_notification("HotKeyRes started. Use system tray icon for options", position="center")
 
 # Run the icon
 icon.run(setup)
