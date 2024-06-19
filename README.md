@@ -7,9 +7,9 @@ build w/ python
 
 ------
 
-<b>System Tray image:</b><br><br>
+system tray image:<br><br>
 ![image](https://github.com/seathasky/hotkeyres/blob/main/systemtray.png)
 <br><br>
-<b>Config,json</b><br>
+config,json</b><br>
 
-Use config.json to change keybind, change/add resolutions and refresh rates.
+use config.json to change keybind, change/add resolutions and refresh rates.
