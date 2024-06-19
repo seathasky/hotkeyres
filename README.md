@@ -15,7 +15,9 @@ system tray image:<br><br>
 ```pip install pyautogui keyboard pywin32 pystray```
 
 ```pyinstaller --onefile --noconsole --icon="C:\Users\USERNAMEHERE\Downloads\hotkeyres-main\icon.ico" "C:\Users\USERNAMEHERE\Downloads\hotkeyres-main\HotKeyRes.py" ```
-<br><br>
-planned bug fixes:<br><br>
-duplicate .exe on multiple click.
+
+# planned features/bug fix:
+-duplicate .exe on multiple click<br>
+-better sys tray icon
+-sys tray tooltop
 
