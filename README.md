@@ -1,6 +1,6 @@
 # HotKeyRes
 [Download latest release](https://github.com/seathasky/hotkeyres/releases)<br><Br>
-Extract HotKeyRes folder wherever you want. Run HotKeyRes.exe.<br>
+Extract "HotKeyRes" folder wherever you want. Run HotKeyRes.exe.<br>
 Default Keybind is CONTROL+F4 or right click system tray icon to toggle resolution.<br>
 Change resolutions/refresh and keybind in config.json<br><br>
 notifications on res switch:<br><br>
