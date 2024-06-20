@@ -7,14 +7,12 @@
 <b>Setup:</b><br>
 Extract "HotKeyRes" folder wherever you want. Run HotKeyRes.exe.<br>
 Default Keybind is CONTROL+F4 or right click system tray icon for options.<br>
-Change resolutions/refresh and keybind in config.json<br><br><br>
+Change resolutions/refresh and keybind in config.json<br><br>
 
 <b>Features:</b><br>
-notifications on res switch:<br><br>
-![image](https://raw.githubusercontent.com/seathasky/hotkeyres/main/github/notifcations.png)
-
-system tray icon:<br><br>
-![image](https://raw.githubusercontent.com/seathasky/hotkeyres/main/github/systemtray1.png)
+-Notifications on resolution switch<br>
+-System tray icon:
+![image](https://raw.githubusercontent.com/seathasky/hotkeyres/main/resources/icon.ico)
 <br>
 
 # build w/ python
