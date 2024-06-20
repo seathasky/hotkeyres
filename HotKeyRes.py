@@ -1,6 +1,3 @@
-# HotKesRes 1.7
-# By Seathasky
-
 import keyboard
 import win32api
 import win32con
@@ -30,6 +27,7 @@ APP_NAME = "HotKeyRes"
 STARTUP_KEY = r'Software\Microsoft\Windows\CurrentVersion\Run'
 EXECUTABLE_NAME = 'HotKeyRes.exe'
 MUTEX_NAME = 'HotKeyRes_Mutex'
+BUILD_VERSION = "2.0"  # Define your build version here
 
 # Default configuration
 DEFAULT_CONFIG = {
@@ -40,7 +38,8 @@ DEFAULT_CONFIG = {
     ],
     "start_at_login": False,
     "notification_duration": 2,
-    "notification_position": "top"
+    "notification_position": "top",
+    "hide_startup_splash": False
 }
 
 # Function to log errors
@@ -95,6 +94,7 @@ default_resolutions = config["default_resolutions"]
 start_at_login = config["start_at_login"]
 notification_duration = config["notification_duration"]
 notification_position = config["notification_position"]
+hide_startup_splash = config["hide_startup_splash"]
 
 # Function to set resolution
 def set_resolution(width, height, refresh_rate):
@@ -120,13 +120,14 @@ def set_resolution(width, height, refresh_rate):
 
 # Function to reload the configuration file
 def reload_config():
-    global config, resolution_switch_keybind, default_resolutions, start_at_login, notification_duration, notification_position
+    global config, resolution_switch_keybind, default_resolutions, start_at_login, notification_duration, notification_position, hide_startup_splash
     config = load_config()
     resolution_switch_keybind = config["resolution_switch_keybind"]
     default_resolutions = config["default_resolutions"]
     start_at_login = config["start_at_login"]
     notification_duration = config["notification_duration"]
     notification_position = config["notification_position"]
+    hide_startup_splash = config["hide_startup_splash"]
 
 # Function to toggle resolution
 def toggle_resolution():
@@ -354,6 +355,12 @@ def toggle_start_at_login(icon, item):
         add_to_startup()
     update_menu(icon)
 
+# Function to handle the toggle hide startup splash menu item
+def toggle_hide_startup_splash(icon, item):
+    config["hide_startup_splash"] = not config["hide_startup_splash"]
+    save_config(config)
+    update_menu(icon)
+
 # Function to update the system tray menu dynamically
 def update_menu(icon):
     icon.menu = Menu(
@@ -363,6 +370,13 @@ def update_menu(icon):
             toggle_start_at_login,
             checked=lambda item: config["start_at_login"]
         ),
+        MenuItem(
+            "Hide Startup Splash",
+            toggle_hide_startup_splash,
+            checked=lambda item: config["hide_startup_splash"]
+        ),
+        Menu.SEPARATOR,  # Add a separator above the build version
+        MenuItem("Build Version: " + BUILD_VERSION, None, enabled=False),  # Add build version to the menu
         MenuItem("Exit", lambda: os._exit(0))
     )
 
@@ -374,6 +388,13 @@ menu = Menu(
         toggle_start_at_login,
         checked=lambda item: config["start_at_login"]
     ),
+    MenuItem(
+        "Hide Startup Splash",
+        toggle_hide_startup_splash,
+        checked=lambda item: config["hide_startup_splash"]
+    ),
+    Menu.SEPARATOR,  # Add a separator above the build version
+    MenuItem("Build Version: " + BUILD_VERSION, None, enabled=False),  # Add build version to the menu
     MenuItem("Exit", lambda: os._exit(0))
 )
 
@@ -390,7 +411,8 @@ def setup(icon):
     icon.visible = True
     if start_at_login:
         add_to_startup()
-    show_startup_notification()
+    if not hide_startup_splash:
+        show_startup_notification()
 
 # Function to show a notification if the program is already running
 def show_already_running_notification():
