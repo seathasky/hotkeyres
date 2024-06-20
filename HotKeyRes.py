@@ -1,3 +1,6 @@
+# HotKesRes 1.7
+# By Seathasky
+
 import keyboard
 import win32api
 import win32con
@@ -8,6 +11,8 @@ import os
 import sys
 import time
 import threading
+import win32event
+import winerror
 from pystray import Icon, MenuItem, Menu
 from PIL import Image, ImageDraw, ImageWin
 
@@ -16,6 +21,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, 'froze
 CONFIG_FILE = os.path.join(BASE_DIR, 'config.json')
 ICON_FILE = os.path.join(BASE_DIR, "resources", "icon.ico")
 IMAGE_FILE = os.path.join(BASE_DIR, "resources", "MainNotif.png")
+LOG_FILE = os.path.join(BASE_DIR, 'error.log')
 current_resolution_index = 0
 notification_thread = None
 notification_window_handle = None
@@ -23,56 +29,54 @@ notification_lock = threading.Lock()
 APP_NAME = "HotKeyRes"
 STARTUP_KEY = r'Software\Microsoft\Windows\CurrentVersion\Run'
 EXECUTABLE_NAME = 'HotKeyRes.exe'
+MUTEX_NAME = 'HotKeyRes_Mutex'
+
+# Default configuration
+DEFAULT_CONFIG = {
+    "resolution_switch_keybind": "ctrl+f4",
+    "default_resolutions": [
+        {"name": "Resolution 1", "width": 1920, "height": 1080, "refresh_rate": 60},
+        {"name": "Resolution 2", "width": 1280, "height": 720, "refresh_rate": 60}
+    ],
+    "start_at_login": False,
+    "notification_duration": 2,
+    "notification_position": "top"
+}
+
+# Function to log errors
+def log_error(message):
+    with open(LOG_FILE, 'a') as f:
+        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\n")
 
 # Function to create a default config file
 def create_default_config():
     print("Creating default config file.")
-    default_config = {
-        "resolution_switch_keybind": "ctrl+f4",
-        "default_resolutions": [
-            {"name": "Resolution 1", "width": 1920, "height": 1080, "refresh_rate": 60},
-            {"name": "Resolution 2", "width": 1280, "height": 720, "refresh_rate": 60}
-        ],
-        "start_at_login": False,
-        "notification_duration": 2,
-        "notification_position": "top"
-    }
     try:
         with open(CONFIG_FILE, 'w') as f:
-            json.dump(default_config, f, indent=4)
+            json.dump(DEFAULT_CONFIG, f, indent=4)
         print("Default config file created.")
     except Exception as e:
-        print(f"Error creating default config file: {e}")
+        log_error(f"Error creating default config file: {e}")
 
 # Function to load the config file
 def load_config():
     if not os.path.exists(CONFIG_FILE):
         create_default_config()
+
     try:
         with open(CONFIG_FILE, 'r') as f:
             config = json.load(f)
         print("Config file loaded.")
     except Exception as e:
-        print(f"Error loading config file: {e}")
+        log_error(f"Error loading config file: {e}")
         create_default_config()
         with open(CONFIG_FILE, 'r') as f:
             config = json.load(f)
 
     # Ensure all necessary keys are present
-    if "resolution_switch_keybind" not in config:
-        config["resolution_switch_keybind"] = "ctrl+f4"
-    if "default_resolutions" not in config:
-        config["default_resolutions"] = [
-            {"name": "Resolution 1", "width": 1920, "height": 1080, "refresh_rate": 60},
-            {"name": "Resolution 2", "width": 1280, "height": 720, "refresh_rate": 60}
-        ]
-    if "start_at_login" not in config:
-        config["start_at_login"] = False
-    if "notification_duration" not in config:
-        config["notification_duration"] = 2
-    if "notification_position" not in config:
-        config["notification_position"] = "top"
-    
+    for key, value in DEFAULT_CONFIG.items():
+        config.setdefault(key, value)
+
     return config
 
 # Function to save the config file
@@ -82,28 +86,15 @@ def save_config(config):
             json.dump(config, f, indent=4)
         print("Config file saved.")
     except Exception as e:
-        print(f"Error saving config file: {e}")
+        log_error(f"Error saving config file: {e}")
 
 # Load the config file
-try:
-    config = load_config()
-    resolution_switch_keybind = config["resolution_switch_keybind"]
-    default_resolutions = config["default_resolutions"]
-    start_at_login = config["start_at_login"]
-    notification_duration = config["notification_duration"]
-    notification_position = config["notification_position"]
-except Exception as e:
-    print(f"Failed to load configuration: {e}")
-    config = {
-        "resolution_switch_keybind": "ctrl+f4",
-        "default_resolutions": [
-            {"name": "Resolution 1", "width": 1920, "height": 1080, "refresh_rate": 60},
-            {"name": "Resolution 2", "width": 1280, "height": 720, "refresh_rate": 60}
-        ],
-        "start_at_login": False,
-        "notification_duration": 2,
-        "notification_position": "top"
-    }
+config = load_config()
+resolution_switch_keybind = config["resolution_switch_keybind"]
+default_resolutions = config["default_resolutions"]
+start_at_login = config["start_at_login"]
+notification_duration = config["notification_duration"]
+notification_position = config["notification_position"]
 
 # Function to set resolution
 def set_resolution(width, height, refresh_rate):
@@ -115,16 +106,17 @@ def set_resolution(width, height, refresh_rate):
         devmode.Fields = win32con.DM_PELSWIDTH | win32con.DM_PELSHEIGHT | win32con.DM_DISPLAYFREQUENCY
 
         result = win32api.ChangeDisplaySettings(devmode, 0)
-        if result != win32con.DISP_CHANGE_SUCCESSFUL:
-            print(f"Failed to change resolution. Error code: {result}")
-            show_resolution_notification(f"Failed to change resolution. Error code: {result}")
+        if result == win32con.DISP_CHANGE_SUCCESSFUL:
+            message = f"Resolution changed to {height}p at {refresh_rate}Hz"
         else:
-            print(f"Resolution set to {height}p at {refresh_rate}Hz")
-            show_resolution_notification(f"Resolution changed to {height}p at {refresh_rate}Hz")
+            message = f"Failed to change resolution. Error code: {result}"
+        print(message)
+        show_resolution_notification(message)
 
     except Exception as e:
-        print(f"An error occurred while setting resolution: {e}")
-        show_resolution_notification(f"Error: {e}")
+        message = f"An error occurred while setting resolution: {e}"
+        log_error(message)
+        show_resolution_notification(message)
 
 # Function to reload the configuration file
 def reload_config():
@@ -154,7 +146,7 @@ def show_startup_notification():
         notification_thread.start()
 
     except Exception as e:
-        print(f"An error occurred while showing startup notification: {e}")
+        log_error(f"An error occurred while showing startup notification: {e}")
 
 def _show_startup_notification_window():
     try:
@@ -201,6 +193,7 @@ def _show_startup_notification_window():
         # Load the image
         if not os.path.exists(IMAGE_FILE):
             print(f"Image not found: {IMAGE_FILE}")
+            log_error(f"Image not found: {IMAGE_FILE}")
             return
 
         image = Image.open(IMAGE_FILE)
@@ -219,7 +212,7 @@ def _show_startup_notification_window():
         win32gui.UnregisterClass(wc.lpszClassName, wc.hInstance)
 
     except Exception as e:
-        print(f"An error occurred in _show_startup_notification_window: {e}")
+        log_error(f"An error occurred in _show_startup_notification_window: {e}")
 
 # Function to create and show a resolution change notification window with text
 def show_resolution_notification(message):
@@ -230,7 +223,7 @@ def show_resolution_notification(message):
         notification_thread.start()
 
     except Exception as e:
-        print(f"An error occurred while showing resolution notification: {e}")
+        log_error(f"An error occurred while showing resolution notification: {e}")
 
 def _show_resolution_notification_window(message):
     try:
@@ -293,7 +286,7 @@ def _show_resolution_notification_window(message):
         win32gui.UnregisterClass(wc.lpszClassName, wc.hInstance)
 
     except Exception as e:
-        print(f"An error occurred in _show_resolution_notification_window: {e}")
+        log_error(f"An error occurred in _show_resolution_notification_window: {e}")
 
 def _WndProc(hwnd, msg, wParam, lParam):
     if msg == win32con.WM_CLOSE:
@@ -316,6 +309,7 @@ def create_icon_with_h():
     # Load the icon from the correct directory
     if not os.path.exists(ICON_FILE):
         print(f"Icon not found: {ICON_FILE}")
+        log_error(f"Icon not found: {ICON_FILE}")
         return None
     return Image.open(ICON_FILE)
 
@@ -330,21 +324,24 @@ def add_to_startup():
     else:
         exe_path = os.path.abspath(__file__).replace('.py', '.exe')
     
-    key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, STARTUP_KEY, 0, winreg.KEY_SET_VALUE)
-    winreg.SetValueEx(key, APP_NAME, 0, winreg.REG_SZ, exe_path)
-    winreg.CloseKey(key)
-    config["start_at_login"] = True
-    save_config(config)
-    print("Added to startup.")
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, STARTUP_KEY, 0, winreg.KEY_SET_VALUE) as key:
+            winreg.SetValueEx(key, APP_NAME, 0, winreg.REG_SZ, exe_path)
+        config["start_at_login"] = True
+        save_config(config)
+        print("Added to startup.")
+    except Exception as e:
+        log_error(f"Error adding to startup: {e}")
 
 # Function to remove application from startup
 def remove_from_startup():
     try:
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, STARTUP_KEY, 0, winreg.KEY_SET_VALUE)
-        winreg.DeleteValue(key, APP_NAME)
-        winreg.CloseKey(key)
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, STARTUP_KEY, 0, winreg.KEY_SET_VALUE) as key:
+            winreg.DeleteValue(key, APP_NAME)
     except FileNotFoundError:
         pass
+    except Exception as e:
+        log_error(f"Error removing from startup: {e}")
     config["start_at_login"] = False
     save_config(config)
     print("Removed from startup.")
@@ -384,6 +381,7 @@ menu = Menu(
 icon_image = create_icon_with_h()
 if not icon_image:
     print("Error: Icon not found. Exiting.")
+    log_error("Error: Icon not found. Exiting.")
     sys.exit(1)
 icon = Icon("HotKeyRes", icon_image, menu=menu, title="HotKeyRes options")
 
@@ -393,6 +391,21 @@ def setup(icon):
     if start_at_login:
         add_to_startup()
     show_startup_notification()
+
+# Function to show a notification if the program is already running
+def show_already_running_notification():
+    print("Program is already running.")
+    show_resolution_notification("HotKeyRes is already running.")
+
+# Check for existing instances using a mutex
+try:
+    mutex = win32event.CreateMutex(None, True, MUTEX_NAME)
+    if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
+        show_already_running_notification()
+        sys.exit(0)
+except Exception as e:
+    log_error(f"Error creating mutex: {e}")
+    sys.exit(1)
 
 # Run the icon
 icon.run(setup)
