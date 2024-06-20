@@ -11,8 +11,8 @@ Change resolutions/refresh and keybind in config.json<br><br>
 
 <b>Features:</b><br>
 -Notifications on resolution switch<br>
--System tray icon:
-![image](https://raw.githubusercontent.com/seathasky/hotkeyres/main/resources/icon.ico)
+-System tray icon -->
+<img src="https://raw.githubusercontent.com/seathasky/hotkeyres/main/resources/icon.ico" width=16 height=16>
 <br>
 
 # build w/ python
