@@ -23,7 +23,7 @@ Change resolutions/refresh and keybind in config.json<br><br>
 
 # planned features/bug fix:
 <ul>
-  <li>fix duplicate .exe on multiple click</li>
+  <li><del>fix duplicate .exe on multiple click</del></li>
   <li><del>notification at .exe launch</del></li>
 <li><del>add start at login feature</del></li>
  <li><del>better sys tray icon</del></li>
