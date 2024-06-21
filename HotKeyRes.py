@@ -27,7 +27,7 @@ APP_NAME = "HotKeyRes"
 STARTUP_KEY = r'Software\Microsoft\Windows\CurrentVersion\Run'
 EXECUTABLE_NAME = 'HotKeyRes.exe'
 MUTEX_NAME = 'HotKeyRes_Mutex'
-BUILD_VERSION = "2.0"  # Define your build version here
+BUILD_VERSION = "2.1"  # Define your build version here
 
 # Default configuration
 DEFAULT_CONFIG = {
@@ -97,7 +97,7 @@ notification_position = config["notification_position"]
 hide_startup_splash = config["hide_startup_splash"]
 
 # Function to set resolution
-def set_resolution(width, height, refresh_rate):
+def set_resolution(width, height, refresh_rate, resolution_name):
     try:
         devmode = win32api.EnumDisplaySettings(None, 0)
         devmode.PelsWidth = width
@@ -111,12 +111,12 @@ def set_resolution(width, height, refresh_rate):
         else:
             message = f"Failed to change resolution. Error code: {result}"
         print(message)
-        show_resolution_notification(message)
+        show_resolution_notification(message, resolution_name)
 
     except Exception as e:
         message = f"An error occurred while setting resolution: {e}"
         log_error(message)
-        show_resolution_notification(message)
+        show_resolution_notification(message, resolution_name)
 
 # Function to reload the configuration file
 def reload_config():
@@ -136,7 +136,7 @@ def toggle_resolution():
     resolutions = config["default_resolutions"]
     current_resolution_index = (current_resolution_index + 1) % len(resolutions)
     res = resolutions[current_resolution_index]
-    set_resolution(res["width"], res["height"], res["refresh_rate"])
+    set_resolution(res["width"], res["height"], res["refresh_rate"], res["name"])
 
 # Function to create and show a startup notification window with an image
 def show_startup_notification():
@@ -216,17 +216,17 @@ def _show_startup_notification_window():
         log_error(f"An error occurred in _show_startup_notification_window: {e}")
 
 # Function to create and show a resolution change notification window with text
-def show_resolution_notification(message):
+def show_resolution_notification(message, resolution_name):
     global notification_thread
 
     try:
-        notification_thread = threading.Thread(target=_show_resolution_notification_window, args=(message,))
+        notification_thread = threading.Thread(target=_show_resolution_notification_window, args=(message, resolution_name))
         notification_thread.start()
 
     except Exception as e:
         log_error(f"An error occurred while showing resolution notification: {e}")
 
-def _show_resolution_notification_window(message):
+def _show_resolution_notification_window(message, resolution_name):
     try:
         class_name = f"NotificationWindowClass_{int(time.time()*2000)}"
 
@@ -277,6 +277,7 @@ def _show_resolution_notification_window(message):
         win32gui.FrameRect(hdc, rect, win32gui.CreateSolidBrush(win32api.RGB(0, 0, 0)))
 
         # Draw text
+        win32gui.DrawText(hdc, resolution_name, -1, rect, win32con.DT_CENTER | win32con.DT_TOP | win32con.DT_SINGLELINE)
         win32gui.DrawText(hdc, message, -1, rect, win32con.DT_CENTER | win32con.DT_VCENTER | win32con.DT_SINGLELINE)
 
         win32gui.ReleaseDC(notification_window_handle, hdc)
@@ -417,7 +418,7 @@ def setup(icon):
 # Function to show a notification if the program is already running
 def show_already_running_notification():
     print("Program is already running.")
-    show_resolution_notification("HotKeyRes is already running.")
+    show_resolution_notification("HotKeyRes is already running.", "Notification")
 
 # Check for existing instances using a mutex
 try:
